@@ -1,33 +1,19 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.0.2)
+project(lsuwb)
 
-# Definir o nome do projeto
-project(lpuwb)
-
-# Encontrar pacotes ROS necessários
+## Encontrar pacotes necessários
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
-  message_generation
+  geometry_msgs
 )
 
-# Adicionar arquivos de mensagem
-add_message_files(
-  FILES
-  Tag.msg
-)
-
-# Gerar as mensagens
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
-
-# Pacote catkin
+## Configurar o pacote
 catkin_package(
-  CATKIN_DEPENDS rospy std_msgs message_runtime
+  CATKIN_DEPENDS rospy std_msgs geometry_msgs
 )
 
-# Incluir diretórios de dependências
+## Incluir diretórios
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )

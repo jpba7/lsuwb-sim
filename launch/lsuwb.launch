@@ -1,0 +1,11 @@
+<launch>
+  <!-- Configurar parâmetros globais -->
+  <param name="serial_port" value="/dev/ttyACM0" /> <!-- Porta serial -->
+  <param name="baudrate" value="115200" />         <!-- Taxa de transmissão -->
+
+  <!-- Iniciar o nó lsuwb -->
+  <node name="lsuwb_node" pkg="lsuwb" type="main.py" output="screen">
+    <param name="serial_port" value="$(arg serial_port)" />
+    <param name="baudrate" value="$(arg baudrate)" />
+  </node>
+</launch>
