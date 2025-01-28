@@ -1,44 +1,49 @@
 #!/usr/bin/env python3
 
 import serial
-import time
 import rospy
-from lpuwb.msg import Tag
-from src.tag import Tag as TagClass
+from geometry_msgs.msg import PoseStamped, Point, Quaternion
+from tag import Tag as TagClass
 
 # Dicionário para gerenciar as instâncias de Tag
 tags = {}
 
 # Configuração da porta serial
 ser = serial.Serial(
-    port='/dev/ttyACM0',         # Substitua pela porta do seu dispositivo
-    baudrate=115200,            # Taxa de transmissão (ajuste conforme necessário)
-    timeout=1                   # Tempo de espera para leitura (em segundos)
+    port='/dev/ttyACM0',  # Substitua pela porta do seu dispositivo
+    baudrate=115200,      # Taxa de transmissão (ajuste conforme necessário)
+    timeout=1             # Tempo de espera para leitura (em segundos)
 )
 
-def publicar_tag(tag_obj, publisher):
+def publicar_pose(tag_obj, publisher):
     """
-    Publica os dados de uma Tag no tópico correspondente.
+    Publica os dados da Tag no tópico correspondente usando geometry_msgs/PoseStamped.
     """
-    msg = Tag()
-    msg.canal = tag_obj.canal
-    msg.ID = tag_obj.ID
-    msg.x = tag_obj.x if tag_obj.x is not None else float('nan')
-    msg.y = tag_obj.y if tag_obj.y is not None else float('nan')
-    msg.z = tag_obj.z if tag_obj.z is not None else float('nan')
-    msg.pqf = tag_obj.pqf
+    msg = PoseStamped()
+    msg.header.stamp = rospy.Time.now()  # Timestamp da mensagem
+    msg.header.frame_id = "map"          # Nome do frame de referência
+
+    # Preenche os campos de position com as coordenadas
+    msg.pose.position = Point(
+        tag_obj.x if tag_obj.x is not None else float('nan'),
+        tag_obj.y if tag_obj.y is not None else float('nan'),
+        tag_obj.z if tag_obj.z is not None else float('nan')
+    )
+    # Preenche a orientação como padrão (sem rotação)
+    msg.pose.orientation = Quaternion(0.0, 0.0, 0.0, 1.0)
+
     publisher.publish(msg)
 
 def main():
-    rospy.init_node('lpuwb_node', anonymous=True)
+    rospy.init_node('lsuwb_node', anonymous=True)
     publishers = {}  # Dicionário para gerenciar publicadores de cada Tag
-    rospy.loginfo("Nodo lpuwb iniciado!")
+    rospy.loginfo("Nodo lsuwb iniciado!")
 
     try:
         # Inicialização (enviar os 0x0D e esperar "dwm>")
         rospy.loginfo("Enviando 0x0D duas vezes...")
         ser.write(b'\x0D')
-        time.sleep(0.1)
+        rospy.sleep(0.1)
         ser.write(b'\x0D')
 
         while True:
@@ -69,13 +74,13 @@ def main():
                     # Atualiza ou cria a Tag no dicionário
                     if ID not in tags:
                         tags[ID] = TagClass(canal, ID, x, y, z, pqf)
-                        publishers[ID] = rospy.Publisher(f'/tag/{ID}', Tag, queue_size=10)
+                        publishers[ID] = rospy.Publisher(f'/lsuwb/{ID}', PoseStamped, queue_size=10)
                         rospy.loginfo(f"Nova Tag criada: {tags[ID]}")
                     else:
                         tags[ID].atualizar_dados(x, y, z, pqf)
 
                     # Publica os dados da Tag
-                    publicar_tag(tags[ID], publishers[ID])
+                    publicar_pose(tags[ID], publishers[ID])
 
     except rospy.ROSInterruptException:
         rospy.loginfo("Encerrando a leitura.")
