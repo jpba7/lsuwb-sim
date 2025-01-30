@@ -103,7 +103,7 @@ No arquivo lsuwb.launch, você pode configurar:
   ```
 2. Frame de Referência
 
-  O frame de referência padrão para o PoseStamped é "map". Se precisar alterar:
+  O frame de referência padrão para o PoseStamped é `"map`". Se precisar alterar:
   
     ```python
     msg.header.frame_id = "odom"
