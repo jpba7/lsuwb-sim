@@ -60,6 +60,7 @@ pose:
 1. Executar o ROS Master
 
   Antes de executar qualquer nó, inicie o ROS Master com:
+  
   ```bash
   roscore
   ```
@@ -77,6 +78,7 @@ pose:
   2.2 Executando Diretamente o Nó
 
   Você também pode executar diretamente o script Python:
+  
   ```bash
   rosrun lsuwb main.py
   ```
@@ -89,12 +91,14 @@ pose:
   No arquivo lsuwb.launch, você pode configurar:
     
     - Porta Serial:
-        Valor padrão: /dev/ttyACM0    
+        Valor padrão: /dev/ttyACM0
+        
       ```xml
       <param name="serial_port" value="/dev/ttyACM0" />
       ```
     - Baudrate:
       Valor padrão: 115200
+      
       ```xml
       <param name="baudrate" value="115200" />
       ```
@@ -110,6 +114,7 @@ pose:
 ## **Visualizando as Mensagens**
 
 1. Liste os tópicos publicados:
+   
   ```bash
   rostopic list
   ```
@@ -117,6 +122,7 @@ pose:
   Você verá tópicos no formato /lsuwb/<ID> (ex.: /lsuwb/XPTO).
 
 2. Monitore um tópico específico:
+   
   ```bash
     rostopic echo /lsuwb/XPTO
   ```
@@ -125,6 +131,7 @@ pose:
 ## **Estrutura do Pacote**
 
 - A estrutura do pacote lsuwb é a seguinte:
+  
   ```bash
   lsuwb/
   ├── CMakeLists.txt          # Configuração de build do ROS
@@ -144,9 +151,11 @@ pose:
 
 1. Faça um fork do projeto.
 2. Crie um branch para suas alterações:
+   
   ```bash
   git checkout -b minha-alteracao
   ```
+
 3. Envie um Pull Request.
 
 ---
