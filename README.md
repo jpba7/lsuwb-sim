@@ -88,20 +88,19 @@ pose:
 
 1. Parâmetros do Arquivo de Launch
 
-  No arquivo lsuwb.launch, você pode configurar:
-    
-    - Porta Serial:
-        Valor padrão: /dev/ttyACM0
+No arquivo lsuwb.launch, você pode configurar:
+- Porta Serial:
+  - Valor padrão: /dev/ttyACM0
         
-      ```xml
-      <param name="serial_port" value="/dev/ttyACM0" />
-      ```
-    - Baudrate:
-      Valor padrão: 115200
+  ```xml
+  <param name="serial_port" value="/dev/ttyACM0" />
+  ```
+- Baudrate:
+  - Valor padrão: 115200
       
-      ```xml
-      <param name="baudrate" value="115200" />
-      ```
+  ```xml
+  <param name="baudrate" value="115200" />
+  ```
 2. Frame de Referência
 
   O frame de referência padrão para o PoseStamped é "map". Se precisar alterar:
