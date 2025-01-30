@@ -103,11 +103,11 @@ No arquivo lsuwb.launch, você pode configurar:
   ```
 2. Frame de Referência
 
-  O frame de referência padrão para o PoseStamped é `"map"`. Se precisar alterar:
+O frame de referência padrão para o PoseStamped é `"map"`. Se precisar alterar:
   
-    ```Python
+  ```python
     msg.header.frame_id = "odom"
-    ```
+  ```
 ---
 
 ## **Visualizando as Mensagens**
@@ -118,7 +118,7 @@ No arquivo lsuwb.launch, você pode configurar:
   rostopic list
   ```
 
-  Você verá tópicos no formato /lsuwb/<ID> (ex.: /lsuwb/XPTO).
+  - Você verá tópicos no formato /lsuwb/<ID> (ex.: /lsuwb/XPTO).
 
 2. Monitore um tópico específico:
    
