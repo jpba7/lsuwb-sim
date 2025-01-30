@@ -2,45 +2,30 @@
 
 import serial
 import rospy
+from std_msgs.msg import Int32  # Importa mensagem para o pqf
 from geometry_msgs.msg import PoseStamped, Point, Quaternion
 from tag import Tag as TagClass
 
-# Dicionário para gerenciar as instâncias de Tag
-tags = {}
-
-# Configuração da porta serial
-ser = serial.Serial(
-    port='/dev/ttyACM0',  # Substitua pela porta do seu dispositivo
-    baudrate=115200,      # Taxa de transmissão (ajuste conforme necessário)
-    timeout=1             # Tempo de espera para leitura (em segundos)
-)
-
-def publicar_pose(tag_obj, publisher):
-    """
-    Publica os dados da Tag no tópico correspondente usando geometry_msgs/PoseStamped.
-    """
-    msg = PoseStamped()
-    msg.header.stamp = rospy.Time.now()  # Timestamp da mensagem
-    msg.header.frame_id = "map"          # Nome do frame de referência
-
-    # Preenche os campos de position com as coordenadas
-    msg.pose.position = Point(
-        tag_obj.x if tag_obj.x is not None else float('nan'),
-        tag_obj.y if tag_obj.y is not None else float('nan'),
-        tag_obj.z if tag_obj.z is not None else float('nan')
-    )
-    # Preenche a orientação como padrão (sem rotação)
-    msg.pose.orientation = Quaternion(0.0, 0.0, 0.0, 1.0)
-
-    publisher.publish(msg)
-
 def main():
     rospy.init_node('lsuwb_node', anonymous=True)
-    publishers = {}  # Dicionário para gerenciar publicadores de cada Tag
-    rospy.loginfo("Nodo lsuwb iniciado!")
+
+    # Obtendo parâmetros do ROS
+    serial_port = rospy.get_param("~serial_port", "/dev/ttyACM0")
+    baudrate = rospy.get_param("~baudrate", 115200)
+
+    rospy.loginfo(f"Iniciando LSUWB com serial_port={serial_port} e baudrate={baudrate}")
 
     try:
-        # Inicialização (enviar os 0x0D e esperar "dwm>")
+        ser = serial.Serial(port=serial_port, baudrate=baudrate, timeout=1)
+    except serial.SerialException as e:
+        rospy.logerr(f"Erro ao abrir porta serial {serial_port}: {e}")
+        return
+
+    publishers_pose = {}  # Dicionário para publicadores de PoseStamped
+    publishers_pqf = {}   # Dicionário para publicadores de pqf
+
+    try:
+        # Inicialização do dispositivo
         rospy.loginfo("Enviando 0x0D duas vezes...")
         ser.write(b'\x0D')
         rospy.sleep(0.1)
@@ -63,7 +48,7 @@ def main():
 
                 # Parse da linha CSV
                 campos = linha.split(',')
-                if campos[0] == "POS":  # Verifica se é uma linha válida de posição
+                if campos[0] == "POS":
                     canal = int(campos[1])
                     ID = campos[2]
                     x = float(campos[3]) if campos[3] != 'nan' else None
@@ -71,16 +56,24 @@ def main():
                     z = float(campos[5]) if campos[5] != 'nan' else None
                     pqf = int(campos[6], 16) if campos[6].startswith('x') else int(campos[6])
 
-                    # Atualiza ou cria a Tag no dicionário
-                    if ID not in tags:
-                        tags[ID] = TagClass(canal, ID, x, y, z, pqf)
-                        publishers[ID] = rospy.Publisher(f'/lsuwb/{ID}', PoseStamped, queue_size=10)
-                        rospy.loginfo(f"Nova Tag criada: {tags[ID]}")
-                    else:
-                        tags[ID].atualizar_dados(x, y, z, pqf)
+                    # Criar publishers se ainda não existirem
+                    if ID not in publishers_pose:
+                        publishers_pose[ID] = rospy.Publisher(f'/lsuwb/{ID}', PoseStamped, queue_size=10)
+                        publishers_pqf[ID] = rospy.Publisher(f'/lsuwb/{ID}/pqf', Int32, queue_size=10)
 
-                    # Publica os dados da Tag
-                    publicar_pose(tags[ID], publishers[ID])
+                    # Publicar PoseStamped
+                    msg_pose = PoseStamped()
+                    msg_pose.header.stamp = rospy.Time.now()
+                    msg_pose.header.frame_id = "map"
+                    msg_pose.pose.position = Point(x or 0, y or 0, z or 0)
+                    msg_pose.pose.orientation = Quaternion(0, 0, 0, 1)
+                    
+                    publishers_pose[ID].publish(msg_pose)
+
+                    # Publicar pqf no novo tópico
+                    msg_pqf = Int32()
+                    msg_pqf.data = pqf
+                    publishers_pqf[ID].publish(msg_pqf)
 
     except rospy.ROSInterruptException:
         rospy.loginfo("Encerrando a leitura.")
