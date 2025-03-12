@@ -10,9 +10,10 @@ docker rm -f lsuwb_simulator 2>/dev/null
 docker build -t lsuwb-simulator .
 
 # Executa novo container com volume montado
-docker run -it --rm \
+docker run -it \
     --network host \
     --add-host=host.docker.internal:host-gateway \
     --name lsuwb_simulator \
     -v $(pwd)/src:/lsuwb_ws/src/lsuwb/src \
+    --restart unless-stopped \
     lsuwb-simulator

@@ -39,7 +39,9 @@ RUN /bin/bash -c ". /opt/ros/$ROS_DISTRO/setup.bash && catkin_make"
 
 # Configura o ambiente ROS
 RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> ~/.bashrc && \
-    echo "source $LSUWB_WS/devel/setup.bash" >> ~/.bashrc
+    echo "source $LSUWB_WS/devel/setup.bash" >> ~/.bashrc &&\
+    echo "export ROS_MASTER_URI=http://192.168.0.100:11311" >> ~/.bashrc
+
 
 # Define permissões de execução para os scripts Python
 RUN chmod +x $LSUWB_WS/src/lsuwb/src/*.py
@@ -49,12 +51,11 @@ RUN echo '#!/bin/bash\n\
 source /opt/ros/$ROS_DISTRO/setup.bash\n\
 source $LSUWB_WS/devel/setup.bash\n\
 chmod +x $LSUWB_WS/src/lsuwb/src/*.py\n\
-roscore & \n\
-sleep 5\n\
-rosrun lsuwb uwb_simulator.py & \n\
-sleep 2\n\
-rosrun lsuwb uwb_api_bridge.py\n\
+\n\
+while true; do\n\
+    sleep 1\n\
+done\n\
 ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Define o ponto de entrada
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
