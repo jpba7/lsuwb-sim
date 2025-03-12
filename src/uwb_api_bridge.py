@@ -3,6 +3,7 @@
 import json
 import os
 from datetime import datetime
+import re
 
 from dotenv import load_dotenv
 import requests
@@ -33,32 +34,82 @@ class UWBApiBridge:
         # Inicializa nó ROS
         rospy.init_node('uwb_api_bridge', anonymous=True)
 
-        # Subscribe em todos os tópicos de posição
-        for tag_id in ['Tag1', 'Tag2', 'Tag3']:
-            rospy.Subscriber(
-                f'/lsuwb/{tag_id}',
-                PoseStamped,
-                self.pose_callback,
-                callback_args=tag_id
-            )
+        # Dicionário para rastrear inscrições ativas e seus últimos dados
+        self.active_subscriptions = {}
+        self.last_data = {}
+
+        # Timer para verificar novos tópicos (a cada 5 segundos)
+        self.topic_check_interval = 5.0
+        rospy.Timer(rospy.Duration(self.topic_check_interval), self.check_topics)
 
         # Timer para envio em lote
         rospy.Timer(rospy.Duration(self.batch_interval), self.timer_callback)
 
+        # Configuração da taxa de amostragem (Hz)
+        self.sample_rate = float(os.getenv('SAMPLE_RATE', '10.0'))  # 10 Hz por padrão
+        self.last_sample_time = {}
+
         rospy.loginfo("UWB API Bridge iniciado")
 
+    def check_topics(self, event):
+        """Verifica periodicamente por novos tópicos de tags UWB"""
+        topics = rospy.get_published_topics()
+
+        # Filtra tópicos UWB, excluindo os de PQF
+        uwb_topics = []
+        for topic, type_name in topics:
+            if topic.startswith('/lsuwb/') and type_name == 'geometry_msgs/PoseStamped':
+                if not topic.endswith('/pqf'):  # Ignora tópicos PQF
+                    uwb_topics.append(topic)
+
+        # Inscreve em novos tópicos
+        for topic in uwb_topics:
+            if topic not in self.active_subscriptions:
+                tag_id = topic.split('/')[-1]  # Extrai o ID da tag do tópico
+                rospy.loginfo(f"Nova tag detectada: {tag_id}")
+                sub = rospy.Subscriber(
+                    topic,
+                    PoseStamped,
+                    self.pose_callback,
+                    callback_args=tag_id,
+                    queue_size=1
+                )
+                self.active_subscriptions[topic] = sub
+                self.last_sample_time[tag_id] = 0.0
+
+        # Remove inscrições de tópicos que não existem mais e envia últimos dados
+        for topic in list(self.active_subscriptions.keys()):
+            if topic not in uwb_topics:
+                tag_id = topic.split('/')[-1]
+                rospy.loginfo(f"Removendo inscrição para tag ausente: {topic}")
+                self.active_subscriptions[topic].unregister()
+                del self.active_subscriptions[topic]
+
+                # Envia últimos dados coletados da tag
+                if tag_id in self.last_data:
+                    last_position = self.last_data[tag_id]
+                    self.batch_data.append(last_position)
+                    del self.last_data[tag_id]
+
     def pose_callback(self, msg, tag_id):
-        """Callback para processar mensagens de pose"""
-        position_data = {
-            'tag_id': tag_id,
-            'timestamp': msg.header.stamp.to_sec(),
-            'x': msg.pose.position.x,
-            'y': msg.pose.position.y,
-            'z': msg.pose.position.z,
-            'created_at': datetime.now().isoformat()
-        }
-        self.batch_data.append(position_data)
-        rospy.logdebug(f"Dados recebidos da {tag_id}: {position_data}")
+        """Callback para processar mensagens de pose com throttling"""
+        current_time = rospy.get_time()
+        time_since_last_sample = current_time - self.last_sample_time.get(tag_id, 0.0)
+
+        # Verifica se passou tempo suficiente desde a última amostra
+        if time_since_last_sample >= (1.0 / self.sample_rate):
+            position_data = {
+                'tag_id': tag_id,
+                'timestamp': msg.header.stamp.to_sec(),
+                'x': msg.pose.position.x,
+                'y': msg.pose.position.y,
+                'z': msg.pose.position.z,
+                'created_at': datetime.now().isoformat()
+            }
+            self.batch_data.append(position_data)
+            self.last_data[tag_id] = position_data
+            self.last_sample_time[tag_id] = current_time
+            rospy.logdebug(f"Dados recebidos da {tag_id}: {position_data}")
 
     def load_pending_data(self):
         """Carrega dados pendentes do arquivo local"""
